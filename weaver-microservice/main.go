@@ -34,7 +34,7 @@ func main() {
 // serve is called by weaver.Run and contains the body of the application.
 func serve(ctx context.Context, app *app) error {
 	opts := weaver.ListenerOptions{LocalAddress: "localhost:" + PORT}
-	lis, err := app.Listener("hello", opts)
+	lis, err := app.Listener("request", opts)
 	if err != nil {
 		return err
 	}
@@ -42,18 +42,22 @@ func serve(ctx context.Context, app *app) error {
 
 	worker := app.worker.Get()
 	// Serve the /hello endpoint.
-	http.HandleFunc("/request", func(w http.ResponseWriter, r *http.Request) {
-		// Parse query parameters
-		// sizeString := r.URL.Query().Get("size")
-		// size, _ := strconv.Atoi(sizeString)
-		// timesString := r.URL.Query().Get("times")
-		// times, _ := strconv.Atoi(timesString)
+	http.Handle("/request", weaver.InstrumentHandlerFunc("request",
+		func(w http.ResponseWriter, r *http.Request) {
+			doWork(1, 1, ctx, worker)
 
-		// Get worker reference and do work
-		doWork(1, 1, ctx, worker)
+			fmt.Fprint(w, "Hello, World!")
+		}))
 
-		fmt.Fprint(w, "Hello, World!")
-	})
+	// http.HandleFunc("/request", func(w http.ResponseWriter, r *http.Request) {
+	// Parse query parameters
+	// sizeString := r.URL.Query().Get("size")
+	// size, _ := strconv.Atoi(sizeString)
+	// timesString := r.URL.Query().Get("times")
+	// times, _ := strconv.Atoi(timesString)
+
+	// Get worker reference and do work
+	// })
 	return http.Serve(lis, nil)
 }
 

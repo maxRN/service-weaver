@@ -4,5 +4,5 @@ binary="./weaver-microservice"
 [gke]
 regions = ["us-west1"]
 public_listener = [
-  {name = "hello", hostname = "hello.com"},
+  {name = "request", hostname = "hello.com"},
 ]
