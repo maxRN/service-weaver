@@ -32,7 +32,7 @@ export PATH=$PATH:/usr/local/go/bin:~/go/bin
 You need to install the `weaver-gke-local` command
 
 ```shell
-go install github.com/ServiceWeaver/weaver-gke/cmd/weaver-gke-local@latest
+export CGO_ENABLED=1; export CC=gcc; go install github.com/ServiceWeaver/weaver/cmd/weaver@latest
 ```
 
 and the `weaver` command

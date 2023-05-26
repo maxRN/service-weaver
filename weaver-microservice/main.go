@@ -6,7 +6,6 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"strconv"
 
 	"github.com/ServiceWeaver/weaver"
 )
