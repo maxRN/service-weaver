@@ -20,7 +20,7 @@ func main() {
 	fmt.Printf("Starting main service. Listening on localhost:%s...\n", PORT)
 
 	http.HandleFunc("/", http.HandlerFunc(handleRequest))
-	log.Fatal(http.ListenAndServe("localhost:"+PORT, nil))
+	log.Fatal(http.ListenAndServe(":"+PORT, nil))
 }
 
 func handleRequest(w http.ResponseWriter, r *http.Request) {
