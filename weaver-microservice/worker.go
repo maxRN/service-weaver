@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 
 	"github.com/ServiceWeaver/weaver"
 )
@@ -23,8 +22,6 @@ type worker struct {
 }
 
 func (w *worker) Work(_ context.Context, wo WorkObject) (WorkObject, error) {
-    log.Println("worker: received request")
-
     result := wo
     result.id = result.id + 1
 

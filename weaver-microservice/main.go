@@ -13,6 +13,10 @@ import (
 
 const PORT = "12345"
 
+var msg = createJSONPayload(500)
+var requestBody = fmt.Sprintf("{\"id\": 123, \"action\": \"request_image\", \"message\": \"%s\"}", msg)
+var wo = WorkObject{id: 123, action: "REQUEST_IMAGE", message: requestBody}
+
 // app is the main component of the application. weaver.Run creates
 // it and passes it to serve.
 type app struct {
@@ -37,40 +41,34 @@ func serve(ctx context.Context, app *app) error {
 	}
 	fmt.Printf("hello listener available on %v\n", lis)
 
+	worker := app.worker.Get()
 	// Serve the /hello endpoint.
 	http.HandleFunc("/request", func(w http.ResponseWriter, r *http.Request) {
 		// Parse query parameters
-		sizeString := r.URL.Query().Get("size")
-		size, _ := strconv.Atoi(sizeString)
-		timesString := r.URL.Query().Get("times")
-		times, _ := strconv.Atoi(timesString)
+		// sizeString := r.URL.Query().Get("size")
+		// size, _ := strconv.Atoi(sizeString)
+		// timesString := r.URL.Query().Get("times")
+		// times, _ := strconv.Atoi(timesString)
 
 		// Get worker reference and do work
-		worker := app.worker.Get()
-		doWork(size, times, ctx, worker)
+		doWork(1, 1, ctx, worker)
+
+		fmt.Fprint(w, "Hello, World!")
 	})
 	return http.Serve(lis, nil)
 }
 
 func doWork(size int, times int, ctx context.Context, worker Worker) {
-	log.Println("before request")
-	msg := createJSONPayload(size)
-	for i := 0; i < times; i = i + 1 {
-		requestBody := fmt.Sprintf("{\"id\": 123, \"action\": \"request_image\", \"message\": \"%s\"}", msg)
-		wo := WorkObject{id: 123, action: "REQUEST_IMAGE", message: requestBody}
-		_, err := worker.Work(ctx, wo)
-		if err != nil {
-			log.Println(err)
-		}
+	_, err := worker.Work(ctx, wo)
+	if err != nil {
+		log.Println(err)
 	}
-	log.Println("After request")
 }
 
 func createJSONPayload(size int) (payload []byte) {
 	letters := []rune{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'}
 	for i := 0; i < size; i = i + 1 {
-		rndNmbr := rand.Intn(26)
-		letter := letters[rndNmbr]
+		letter := letters[rand.Intn(26)]
 		payload = append(payload, byte(letter))
 	}
 	return
