@@ -13,6 +13,9 @@ import (
 
 const PORT = "8070"
 
+var payload = createJSONPayload(500)
+var requestBody = fmt.Sprintf("{\"id\": 123, \"action\": \"request_image\", \"message\": \"%s\"}", payload)
+
 func main() {
 	fmt.Printf("Starting main service. Listening on localhost:%s...\n", PORT)
 
@@ -29,22 +32,16 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		times, _ := strconv.Atoi(timesString)
 		doWork(size, times)
 	}
-	fmt.Fprintf(w, "hello %s", "World")
+	fmt.Fprint(w, "Hello, World!")
 }
 
 func doWork(size int, times int) {
-	// log.Println("before request")
-	msg := createJSONPayload(size)
-	for i := 0; i < times; i = i + 1 {
-		requestBody := fmt.Sprintf("{\"id\": 123, \"action\": \"request_image\", \"message\": \"%s\"}", msg)
-		rdr := strings.NewReader(requestBody)
-		resp, err := http.Post("http://localhost:8069/do-work", "application/json", rdr)
-		if err != nil {
-			log.Fatal(err)
-		}
-		_, _ = io.ReadAll(resp.Body)
+	rdr := strings.NewReader(requestBody)
+	resp, err := http.Post("http://localhost:8069/do-work", "application/json", rdr)
+	if err != nil {
+		log.Fatal(err)
 	}
-	// log.Println("After request")
+	_, _ = io.ReadAll(resp.Body)
 }
 
 func createJSONPayload(size int) (payload []byte) {
