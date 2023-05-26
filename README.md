@@ -8,6 +8,16 @@ To benchmark run `bensh.sh trad` or `bench.sh weaver`.
 
 # Prerequisites
 
+Setting up:
+
+```shell
+apt update
+```
+
+```shell
+apt install git
+```
+
 ## Running the server
 
 You need to have atleast Go 1.20 installed.
@@ -30,6 +40,10 @@ export PATH=$PATH:/usr/local/go/bin:~/go/bin
 ```
 
 You need to install the `weaver-gke-local` command
+
+```shell
+apt install build-essential
+```
 
 ```shell
 export CGO_ENABLED=1; export CC=gcc; go install github.com/ServiceWeaver/weaver/cmd/weaver@latest
