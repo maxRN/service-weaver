@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 echo "starting main service..."
 go run ../trad-microservice/services/main-service/main.go &

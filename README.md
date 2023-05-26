@@ -26,7 +26,7 @@ rm -rf /usr/local/go && tar -C /usr/local -xzf go1.20.4.linux-amd64.tar.gz
 Add to .bashrc:
 
 ```shell
-export PATH=$PATH:/usr/local/go/bin
+export PATH=$PATH:/usr/local/go/bin:~/go/bin
 ```
 
 You need to install the `weaver-gke-local` command
