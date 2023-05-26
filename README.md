@@ -29,10 +29,16 @@ Add to .bashrc:
 export PATH=$PATH:/usr/local/go/bin
 ```
 
-You need to install the `weaver-gke-local` command.
+You need to install the `weaver-gke-local` command
 
 ```shell
 go install github.com/ServiceWeaver/weaver-gke/cmd/weaver-gke-local@latest
+```
+
+and the `weaver` command
+
+```shell
+go install github.com/ServiceWeaver/weaver/cmd/weaver@latest
 ```
 
 ## Running the benchmark
