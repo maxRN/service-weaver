@@ -46,7 +46,13 @@ apt install build-essential
 ```
 
 ```shell
-export CGO_ENABLED=1; export CC=gcc; go install github.com/ServiceWeaver/weaver/cmd/weaver@latest
+go install github.com/ServiceWeaver/weaver-gke/cmd/weaver-gke-local@latest
+```
+
+if it doesn't work, try this:
+
+```shell
+export CGO_ENABLED=1; export CC=gcc; go install github.com/ServiceWeaver/weaver-gke/cmd/weaver-gke-local@latest
 ```
 
 and the `weaver` command
