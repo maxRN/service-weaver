@@ -6,12 +6,17 @@ import (
 	"io"
 	"log"
 	"net/http"
-    _ "net/http/pprof"
+	_ "net/http/pprof"
+	"os"
 )
 
-const PORT = "8069"
+var PORT string
 
 func main() {
+    if len(os.Args) != 2 {
+        log.Fatal("Please provide port number!")
+    }
+    PORT = os.Args[1]
 	fmt.Printf("Starting work service. Listening on localhost:%s\n", PORT)
 
 	// Start listener
@@ -26,7 +31,6 @@ type Request struct {
 }
 
 func WorkHandler(w http.ResponseWriter, r *http.Request) {
-	// log.Println("received request. Doing some work...")
 
     // Parse request body
 	reqBody, _ := io.ReadAll(r.Body)
@@ -39,5 +43,4 @@ func WorkHandler(w http.ResponseWriter, r *http.Request) {
 
     // Return response (+ serialize JSON payload)
 	fmt.Fprint(w, string(returnPayload))
-	// log.Println("done with the work.")
 }
