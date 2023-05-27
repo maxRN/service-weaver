@@ -1,8 +1,8 @@
 [serviceweaver]
-binary="./weaver-microservice"
+binary = "./worker"
 
 [gke]
 regions = ["us-west1"]
 public_listener = [
-  {name = "request", hostname = "hello.com"},
+  {name = "hello", hostname = "hello.com"},
 ]

@@ -20,7 +20,7 @@ var wo = WorkObject{id: 123, action: "REQUEST_IMAGE", message: requestBody}
 // it and passes it to serve.
 type app struct {
 	weaver.Implements[weaver.Main]
-	worker weaver.Ref[Worker]
+    workerholic weaver.Ref[Workaholic]
 }
 
 func main() {
@@ -31,41 +31,29 @@ func main() {
 	}
 }
 
-// serve is called by weaver.Run and contains the body of the application.
+//go:generate weaver generate ./...
+
 func serve(ctx context.Context, app *app) error {
-	opts := weaver.ListenerOptions{LocalAddress: "localhost:" + PORT}
-	lis, err := app.Listener("request", opts)
+	// Get a network listener on address "localhost:12345".
+	opts := weaver.ListenerOptions{LocalAddress: "localhost:12345"}
+	lis, err := app.Listener("hello", opts)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("hello listener available on %v\n", lis)
+    worker := app.workerholic.Get()
 
-	worker := app.worker.Get()
 	// Serve the /hello endpoint.
-	http.Handle("/request", weaver.InstrumentHandlerFunc("request",
+	http.Handle("/hello", weaver.InstrumentHandlerFunc("hello",
 		func(w http.ResponseWriter, r *http.Request) {
-			doWork(1, 1, ctx, worker)
-
+            _, err := worker.Work(ctx, wo)
+            if err != nil {
+                log.Fatal(err)
+            }
 			fmt.Fprint(w, "Hello, World!")
 		}))
 
-	// http.HandleFunc("/request", func(w http.ResponseWriter, r *http.Request) {
-	// Parse query parameters
-	// sizeString := r.URL.Query().Get("size")
-	// size, _ := strconv.Atoi(sizeString)
-	// timesString := r.URL.Query().Get("times")
-	// times, _ := strconv.Atoi(timesString)
-
-	// Get worker reference and do work
-	// })
 	return http.Serve(lis, nil)
-}
-
-func doWork(size int, times int, ctx context.Context, worker Worker) {
-	_, err := worker.Work(ctx, wo)
-	if err != nil {
-		log.Println(err)
-	}
 }
 
 func createJSONPayload(size int) (payload []byte) {
