@@ -1,0 +1,13 @@
+:80 {
+        # Set this path to your site's directory.
+        root * /usr/share/caddy
+
+        # Enable the static file server.
+        file_server
+}
+
+:7766 {
+        reverse_proxy * :8070 :8071 {
+                lb_policy round_robin
+        }
+}

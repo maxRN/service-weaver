@@ -18,6 +18,8 @@ apt update
 apt install git
 ```
 
+You also need to setup a reverse proxy for the traditional service, e.g. Caddy.
+
 ## Running the server
 
 You need to have atleast Go 1.20 installed.

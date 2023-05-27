@@ -7,7 +7,7 @@ ip="$4"
 
 if [ "$1" == "trad" ]; then
     echo "testing traditional app..."
-    port=8070
+    port=7766
 elif [ "$1" == "weaver" ]; then
     echo "testing weaver..."
     port=8000
