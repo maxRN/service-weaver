@@ -17,4 +17,8 @@ else
 fi
 
 echo "benching $1 on $ip:$port with -n $count and -c $conc"
-ab -n $count -c $conc http://"$ip":"$port"/request
+if [ "$1" == "trad" ]; then
+    ab -n $count -c $conc http://"$ip":"$port"/request
+else
+    ab -n $count -c $conc -H"Host:hello.com"  http://"$ip":"$port"/hello
+fi
