@@ -54,6 +54,10 @@ func serve(ctx context.Context, app *app) error {
 		fmt.Fprint(w, "Hello, World!")
 	})
 
+	http.HandleFunc("/nothing", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "Hello, World!")
+	})
+
 	return http.Serve(lis, nil)
 }
 
