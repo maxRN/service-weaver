@@ -28,20 +28,18 @@ func init() {
 		ServerStubFn: func(impl any, addLoad func(uint64, float64)) codegen.Server {
 			return main_server_stub{impl: impl.(weaver.Main), addLoad: addLoad}
 		},
-		RefData: "⟦18bbb40e:wEaVeReDgE:github.com/ServiceWeaver/weaver/Main→worker/Workaholic⟧\n",
+		RefData: "⟦0d6e424b:wEaVeReDgE:github.com/ServiceWeaver/weaver/Main→worker/Worker⟧\n",
 	})
 	codegen.Register(codegen.Registration{
-		Name:  "worker/Workaholic",
-		Iface: reflect.TypeOf((*Workaholic)(nil)).Elem(),
-		Impl:  reflect.TypeOf(workerholic{}),
-		LocalStubFn: func(impl any, tracer trace.Tracer) any {
-			return workaholic_local_stub{impl: impl.(Workaholic), tracer: tracer}
-		},
+		Name:        "worker/Worker",
+		Iface:       reflect.TypeOf((*Worker)(nil)).Elem(),
+		Impl:        reflect.TypeOf(worker{}),
+		LocalStubFn: func(impl any, tracer trace.Tracer) any { return worker_local_stub{impl: impl.(Worker), tracer: tracer} },
 		ClientStubFn: func(stub codegen.Stub, caller string) any {
-			return workaholic_client_stub{stub: stub, workMetrics: codegen.MethodMetricsFor(codegen.MethodLabels{Caller: caller, Component: "worker/Workaholic", Method: "Work"})}
+			return worker_client_stub{stub: stub, workMetrics: codegen.MethodMetricsFor(codegen.MethodLabels{Caller: caller, Component: "worker/Worker", Method: "Work"}), work2Metrics: codegen.MethodMetricsFor(codegen.MethodLabels{Caller: caller, Component: "worker/Worker", Method: "Work2"})}
 		},
 		ServerStubFn: func(impl any, addLoad func(uint64, float64)) codegen.Server {
-			return workaholic_server_stub{impl: impl.(Workaholic), addLoad: addLoad}
+			return worker_server_stub{impl: impl.(Worker), addLoad: addLoad}
 		},
 		RefData: "",
 	})
@@ -49,11 +47,11 @@ func init() {
 
 // weaver.Instance checks.
 var _ weaver.InstanceOf[weaver.Main] = (*app)(nil)
-var _ weaver.InstanceOf[Workaholic] = (*workerholic)(nil)
+var _ weaver.InstanceOf[Worker] = (*worker)(nil)
 
 // weaver.Router checks.
 var _ weaver.Unrouted = (*app)(nil)
-var _ weaver.Unrouted = (*workerholic)(nil)
+var _ weaver.Unrouted = (*worker)(nil)
 
 // Local stub implementations.
 
@@ -65,19 +63,19 @@ type main_local_stub struct {
 // Check that main_local_stub implements the weaver.Main interface.
 var _ weaver.Main = (*main_local_stub)(nil)
 
-type workaholic_local_stub struct {
-	impl   Workaholic
+type worker_local_stub struct {
+	impl   Worker
 	tracer trace.Tracer
 }
 
-// Check that workaholic_local_stub implements the Workaholic interface.
-var _ Workaholic = (*workaholic_local_stub)(nil)
+// Check that worker_local_stub implements the Worker interface.
+var _ Worker = (*worker_local_stub)(nil)
 
-func (s workaholic_local_stub) Work(ctx context.Context, a0 WorkObject) (r0 WorkObject, err error) {
+func (s worker_local_stub) Work(ctx context.Context, a0 WorkObject) (r0 WorkObject, err error) {
 	span := trace.SpanFromContext(ctx)
 	if span.SpanContext().IsValid() {
 		// Create a child span for this method.
-		ctx, span = s.tracer.Start(ctx, "main.Workaholic.Work", trace.WithSpanKind(trace.SpanKindInternal))
+		ctx, span = s.tracer.Start(ctx, "main.Worker.Work", trace.WithSpanKind(trace.SpanKindInternal))
 		defer func() {
 			if err != nil {
 				span.RecordError(err)
@@ -90,6 +88,23 @@ func (s workaholic_local_stub) Work(ctx context.Context, a0 WorkObject) (r0 Work
 	return s.impl.Work(ctx, a0)
 }
 
+func (s worker_local_stub) Work2(ctx context.Context, a0 WorkObject2) (r0 WorkObject2, err error) {
+	span := trace.SpanFromContext(ctx)
+	if span.SpanContext().IsValid() {
+		// Create a child span for this method.
+		ctx, span = s.tracer.Start(ctx, "main.Worker.Work2", trace.WithSpanKind(trace.SpanKindInternal))
+		defer func() {
+			if err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
+			}
+			span.End()
+		}()
+	}
+
+	return s.impl.Work2(ctx, a0)
+}
+
 // Client stub implementations.
 
 type main_client_stub struct {
@@ -99,15 +114,16 @@ type main_client_stub struct {
 // Check that main_client_stub implements the weaver.Main interface.
 var _ weaver.Main = (*main_client_stub)(nil)
 
-type workaholic_client_stub struct {
-	stub        codegen.Stub
-	workMetrics *codegen.MethodMetrics
+type worker_client_stub struct {
+	stub         codegen.Stub
+	workMetrics  *codegen.MethodMetrics
+	work2Metrics *codegen.MethodMetrics
 }
 
-// Check that workaholic_client_stub implements the Workaholic interface.
-var _ Workaholic = (*workaholic_client_stub)(nil)
+// Check that worker_client_stub implements the Worker interface.
+var _ Worker = (*worker_client_stub)(nil)
 
-func (s workaholic_client_stub) Work(ctx context.Context, a0 WorkObject) (r0 WorkObject, err error) {
+func (s worker_client_stub) Work(ctx context.Context, a0 WorkObject) (r0 WorkObject, err error) {
 	// Update metrics.
 	start := time.Now()
 	s.workMetrics.Count.Add(1)
@@ -115,7 +131,7 @@ func (s workaholic_client_stub) Work(ctx context.Context, a0 WorkObject) (r0 Wor
 	span := trace.SpanFromContext(ctx)
 	if span.SpanContext().IsValid() {
 		// Create a child span for this method.
-		ctx, span = s.stub.Tracer().Start(ctx, "main.Workaholic.Work", trace.WithSpanKind(trace.SpanKindClient))
+		ctx, span = s.stub.Tracer().Start(ctx, "main.Worker.Work", trace.WithSpanKind(trace.SpanKindClient))
 	}
 
 	defer func() {
@@ -164,6 +180,63 @@ func (s workaholic_client_stub) Work(ctx context.Context, a0 WorkObject) (r0 Wor
 	return
 }
 
+func (s worker_client_stub) Work2(ctx context.Context, a0 WorkObject2) (r0 WorkObject2, err error) {
+	// Update metrics.
+	start := time.Now()
+	s.work2Metrics.Count.Add(1)
+
+	span := trace.SpanFromContext(ctx)
+	if span.SpanContext().IsValid() {
+		// Create a child span for this method.
+		ctx, span = s.stub.Tracer().Start(ctx, "main.Worker.Work2", trace.WithSpanKind(trace.SpanKindClient))
+	}
+
+	defer func() {
+		// Catch and return any panics detected during encoding/decoding/rpc.
+		if err == nil {
+			err = codegen.CatchPanics(recover())
+			if err != nil {
+				err = errors.Join(weaver.RemoteCallError, err)
+			}
+		}
+
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			s.work2Metrics.ErrorCount.Add(1)
+		}
+		span.End()
+
+		s.work2Metrics.Latency.Put(float64(time.Since(start).Microseconds()))
+	}()
+
+	// Preallocate a buffer of the right size.
+	size := 0
+	size += serviceweaver_size_WorkObject2_b0a3ff1b(&a0)
+	enc := codegen.NewEncoder()
+	enc.Reset(size)
+
+	// Encode arguments.
+	(a0).WeaverMarshal(enc)
+	var shardKey uint64
+
+	// Call the remote method.
+	s.work2Metrics.BytesRequest.Put(float64(len(enc.Data())))
+	var results []byte
+	results, err = s.stub.Run(ctx, 1, enc.Data(), shardKey)
+	if err != nil {
+		err = errors.Join(weaver.RemoteCallError, err)
+		return
+	}
+	s.work2Metrics.BytesReply.Put(float64(len(results)))
+
+	// Decode the results.
+	dec := codegen.NewDecoder(results)
+	(&r0).WeaverUnmarshal(dec)
+	err = dec.Error()
+	return
+}
+
 // Server stub implementations.
 
 type main_server_stub struct {
@@ -182,25 +255,27 @@ func (s main_server_stub) GetStubFn(method string) func(ctx context.Context, arg
 	}
 }
 
-type workaholic_server_stub struct {
-	impl    Workaholic
+type worker_server_stub struct {
+	impl    Worker
 	addLoad func(key uint64, load float64)
 }
 
-// Check that workaholic_server_stub implements the codegen.Server interface.
-var _ codegen.Server = (*workaholic_server_stub)(nil)
+// Check that worker_server_stub implements the codegen.Server interface.
+var _ codegen.Server = (*worker_server_stub)(nil)
 
 // GetStubFn implements the codegen.Server interface.
-func (s workaholic_server_stub) GetStubFn(method string) func(ctx context.Context, args []byte) ([]byte, error) {
+func (s worker_server_stub) GetStubFn(method string) func(ctx context.Context, args []byte) ([]byte, error) {
 	switch method {
 	case "Work":
 		return s.work
+	case "Work2":
+		return s.work2
 	default:
 		return nil
 	}
 }
 
-func (s workaholic_server_stub) work(ctx context.Context, args []byte) (res []byte, err error) {
+func (s worker_server_stub) work(ctx context.Context, args []byte) (res []byte, err error) {
 	// Catch and return any panics detected during encoding/decoding/rpc.
 	defer func() {
 		if err == nil {
@@ -217,6 +292,31 @@ func (s workaholic_server_stub) work(ctx context.Context, args []byte) (res []by
 	// user code: fix this.
 	// Call the local method.
 	r0, appErr := s.impl.Work(ctx, a0)
+
+	// Encode the results.
+	enc := codegen.NewEncoder()
+	(r0).WeaverMarshal(enc)
+	enc.Error(appErr)
+	return enc.Data(), nil
+}
+
+func (s worker_server_stub) work2(ctx context.Context, args []byte) (res []byte, err error) {
+	// Catch and return any panics detected during encoding/decoding/rpc.
+	defer func() {
+		if err == nil {
+			err = codegen.CatchPanics(recover())
+		}
+	}()
+
+	// Decode arguments.
+	dec := codegen.NewDecoder(args)
+	var a0 WorkObject2
+	(&a0).WeaverUnmarshal(dec)
+
+	// TODO(rgrandl): The deferred function above will recover from panics in the
+	// user code: fix this.
+	// Call the local method.
+	r0, appErr := s.impl.Work2(ctx, a0)
 
 	// Encode the results.
 	enc := codegen.NewEncoder()
@@ -256,6 +356,92 @@ func (x *WorkObject) WeaverUnmarshal(dec *codegen.Decoder) {
 	x.message = dec.String()
 }
 
+var _ codegen.AutoMarshal = (*WorkObject2)(nil)
+
+type __is_WorkObject2[T ~struct {
+	weaver.AutoMarshal
+	id        int
+	action    string
+	message1  string
+	message2  string
+	message3  string
+	message4  string
+	message5  string
+	message6  string
+	message7  string
+	message8  string
+	message9  string
+	message10 string
+	message11 string
+	message12 string
+	message13 string
+	message14 string
+	message15 string
+	message16 string
+	message17 string
+	message18 string
+	message19 string
+	message20 string
+}] struct{}
+
+var _ __is_WorkObject2[WorkObject2]
+
+func (x *WorkObject2) WeaverMarshal(enc *codegen.Encoder) {
+	if x == nil {
+		panic(fmt.Errorf("WorkObject2.WeaverMarshal: nil receiver"))
+	}
+	enc.Int(x.id)
+	enc.String(x.action)
+	enc.String(x.message1)
+	enc.String(x.message2)
+	enc.String(x.message3)
+	enc.String(x.message4)
+	enc.String(x.message5)
+	enc.String(x.message6)
+	enc.String(x.message7)
+	enc.String(x.message8)
+	enc.String(x.message9)
+	enc.String(x.message10)
+	enc.String(x.message11)
+	enc.String(x.message12)
+	enc.String(x.message13)
+	enc.String(x.message14)
+	enc.String(x.message15)
+	enc.String(x.message16)
+	enc.String(x.message17)
+	enc.String(x.message18)
+	enc.String(x.message19)
+	enc.String(x.message20)
+}
+
+func (x *WorkObject2) WeaverUnmarshal(dec *codegen.Decoder) {
+	if x == nil {
+		panic(fmt.Errorf("WorkObject2.WeaverUnmarshal: nil receiver"))
+	}
+	x.id = dec.Int()
+	x.action = dec.String()
+	x.message1 = dec.String()
+	x.message2 = dec.String()
+	x.message3 = dec.String()
+	x.message4 = dec.String()
+	x.message5 = dec.String()
+	x.message6 = dec.String()
+	x.message7 = dec.String()
+	x.message8 = dec.String()
+	x.message9 = dec.String()
+	x.message10 = dec.String()
+	x.message11 = dec.String()
+	x.message12 = dec.String()
+	x.message13 = dec.String()
+	x.message14 = dec.String()
+	x.message15 = dec.String()
+	x.message16 = dec.String()
+	x.message17 = dec.String()
+	x.message18 = dec.String()
+	x.message19 = dec.String()
+	x.message20 = dec.String()
+}
+
 // Size implementations.
 
 // serviceweaver_size_WorkObject_ab5e7dd4 returns the size (in bytes) of the serialization
@@ -266,5 +452,35 @@ func serviceweaver_size_WorkObject_ab5e7dd4(x *WorkObject) int {
 	size += 8
 	size += (4 + len(x.action))
 	size += (4 + len(x.message))
+	return size
+}
+
+// serviceweaver_size_WorkObject2_b0a3ff1b returns the size (in bytes) of the serialization
+// of the provided type.
+func serviceweaver_size_WorkObject2_b0a3ff1b(x *WorkObject2) int {
+	size := 0
+	size += 0
+	size += 8
+	size += (4 + len(x.action))
+	size += (4 + len(x.message1))
+	size += (4 + len(x.message2))
+	size += (4 + len(x.message3))
+	size += (4 + len(x.message4))
+	size += (4 + len(x.message5))
+	size += (4 + len(x.message6))
+	size += (4 + len(x.message7))
+	size += (4 + len(x.message8))
+	size += (4 + len(x.message9))
+	size += (4 + len(x.message10))
+	size += (4 + len(x.message11))
+	size += (4 + len(x.message12))
+	size += (4 + len(x.message13))
+	size += (4 + len(x.message14))
+	size += (4 + len(x.message15))
+	size += (4 + len(x.message16))
+	size += (4 + len(x.message17))
+	size += (4 + len(x.message18))
+	size += (4 + len(x.message19))
+	size += (4 + len(x.message20))
 	return size
 }

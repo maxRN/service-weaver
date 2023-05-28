@@ -4,6 +4,7 @@ port=0
 count="$2"
 conc="$3"
 ip="$4"
+test_endpoint="$5"
 
 if [ "$1" == "trad" ]; then
     echo "testing traditional app..."
@@ -16,9 +17,9 @@ else
     exit -1
 fi
 
-echo "benching $1 on $ip:$port with -n $count and -c $conc"
+echo "benching $1 on $ip:$port/$test_endpoint with -n $count and -c $conc"
 if [ "$1" == "trad" ]; then
-    ab -n $count -c $conc http://"$ip":"$port"/request
+    ab -n $count -c $conc http://"$ip":"$port"/"$test_endpoint"
 else
-    ab -n $count -c $conc -H"Host:hello.com"  http://"$ip":"$port"/hello
+    ab -n $count -c $conc -H "Host:hello.com"  http://"$ip":"$port"/"$test_endpoint"
 fi
