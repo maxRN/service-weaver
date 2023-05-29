@@ -1,5 +1,8 @@
 \documentclass[sigconf,review,9pt]{acmart}
 \graphicspath{ {./figures/} }
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{multirow}
 
 \title{Service Weaver: A new era of developing microservice architectures?}
 \author{Max Große}
@@ -8,7 +11,18 @@
 \begin{document}
 
 \begin{abstract}
-	This is the abstract.
+	Microservice architecture are quickly becoming the default architecture style
+	in the industry, increasing development velocity and reducing scaling issues.
+	However numerous problems have been identified that plague microservice development,
+	such as designing the overall architecture and high network usage.
+	Service Weaver is a new framework that aims to solve some of the challenges involved
+	in microservice development.
+	In this paper I find that Service Weaver shows up to a 10\% reduction in message size
+	and thus faster communication speeds.
+	It also simplifies operating large applications by providing integration with
+	logging, metrics, and trace tooling of cloud providers.
+	It remains to be seen whether the simplified configuration of Service Weaver application
+	can cover all use cases.
 \end{abstract}
 
 \maketitle
@@ -36,6 +50,8 @@ splitting of the application.
 To investigate whether Service Weaver can be a feasible alternative to conventional
 MSA development I devised multiple experiments to empirically determine the performance
 claims of Service Weaver.
+I will also try to present how easy or complicated certain operations during the
+lifecycle of a typical software application are for the two applications.
 
 \subsection{Related Work}
 The team behind Service Weaver present the programming model and architecture
@@ -99,9 +115,8 @@ don't share a database.
 A typical MSA application consists of multiple folders for each microservice
 that don't share code with each other.
 
-I kept the service in this example simple and didn't include deployment files
-such as Dockerfiles or Helm files since I only deploy the services locally and
-the size of them is still
+To create a typical microservice I created two separate services in different folders.
+The services are both written in Go and communicate with each other via REST endpoints and JSON messages.
 
 \section{Evaluation}
 
@@ -173,6 +188,7 @@ For each test no other services besides the app itself and the pre-installed sys
 I used the load-generation tool Apache Bench (\emph{ab}) \cite{ApacheHTTPServer} to simulate
 real-world stress test.
 
+
 \begin{table}
 	\caption{Specifications of virtual machine used for testing.}
 	\label{tab:linode}
@@ -182,10 +198,10 @@ real-world stress test.
 		CPU cores & 2                & 1                \\
 		CPU speed & 2.199GHz         & 2.299GHz         \\
 		RAM       & 4 GB             & 1 GB             \\
-		OS        & Debian 11 64 bit & Debian 11 64 bit \\
-		\bottomrule
+		OS        & Debian 11 64 bit & Debian 11 64 bit
 	\end{tabular}
 \end{table}
+
 
 \begin{figure}
 	\includegraphics[width=\columnwidth]{setup}
@@ -194,16 +210,6 @@ real-world stress test.
 		Afterwards the worker's response will be returned to the user.}
 	\label{fig:architecture}
 \end{figure}
-
-\emph{Traditional App.} The main worker $\mathcal{M}$ listens on an endpoint for requests.
-When it receives a request it will then make multiple calls to the worker service
-$\mathcal{W}$.
-The number of calls as well as the size of the payload can be controlled by query
-parameters that are passed in the initial request.
-The main service then sends a POST request to the worker service.
-The worker service receives that request, parses the JSON body into a struct.
-Then it modifies that struct by increasing its ID number and afterwards marshals
-the struct and returns this as a response.
 
 \subsection{Results}
 
@@ -234,6 +240,13 @@ they can grow large.
 The best case for the Service Weaver encoding is a JSON message with a lot of fields
 with long names but short values.
 
+\begin{figure}
+	\includegraphics[width=\columnwidth]{serialization_code}
+	\caption{Generated Service Weaver code for serializing objects
+		as method arguments.}
+	\label{fig:serialization_code}
+\end{figure}
+
 The shorter message size isn't the only contributing factor to the higher Service Weaver
 performance though.
 Service Weaver can also save time by not having to parse the JSON string before
@@ -253,14 +266,60 @@ we can see that the message is at least around
 
 \subsubsection{Splitting Microservice}
 
-To split a Service Weaver microservice into two, we need to just create a new
-file and move all the relevant code into that file.
-Afterwards we need to make sure to update all the call sites with the new names.
-This process can be partially automated by using tools such as the Go LSP or
-fully fledged IDEs such as Goland \cite{goland}.
-If we forgot any place in the code, that compiler will tell us where exactly we
-forgot to change the code.
-The app also won't even build so we cannot accidentally deploy a broken version.
+\begin{figure}
+	\includegraphics[width=\columnwidth]{minimal_component}
+	\caption{A minimal Service Weaver component that exposes a function
+		for adding two integers together.}
+	\label{fig:minimal_component}
+\end{figure}
+
+In Service Weaver the concept of microservices is represented by components.
+A component is an entity that can be replicated and placed wherever desired.
+All communication happens through components.
+To split such a microservice (or component) one would need to create a new
+component that takes over some of the functionality of the old service.
+This is done by creating a new public type and a private type that implements
+that public type, typically in a new file as well.
+A minimal component is shown in \ref{fig:minimal_component}.
+Every component that now wants to use the new component just needs get a reference
+to the new type like shown in \ref{fig:minimal_component}.
+After that is done, each place in the code where the new component is to be used
+needs to be updated.
+Should we forgot any place, then the compiler will fail and display an error message
+-- we can't build the application before fixing all those errors and references.
+After that we can generate the new Service Weaver boilerplate code and then deploy
+the new version.
+
+\begin{table}[h]
+	\centering
+	\caption{Comparison of actions involving splitting a Service Weaver and a
+		traditional microservice into two.}
+	\label{tab:split_ms}
+	\begin{tabularx}{\columnwidth}{cXX}
+		\toprule
+		Metric                     & Service Weaver                                                                   & Traditional Application                                                          \\
+		\midrule
+		Source files updated       & old microservice, new microservice, each file that references old or new service & old microservice, new microservice, each file that references old or new service \\
+		Config files updated       & none                                                                             & new Dockerfile, new Helmfile, update deployment pipeline                         \\
+		Errors caught by compiler? & Yes                                                                              & No                                                                               \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+
+% \begin{table}[h]
+% 	\centering
+% 	\begin{tabular}{lllll}
+% 		\toprule
+% 		\multirow{2}{*}{Models} & \multicolumn{3}{c}{Metric 1} & Metric 2                  \\
+% 		\cmidrule{2-4} \cmidrule{5-5}                                                      \\
+% 		{}                      & precision                    & recall   & F-score & R@10 \\
+% 		\midrule
+% 		model 1                 & 0.67                         & 0.8      & 0.729   & 0.75 \\
+% 		model 2                 & 0.8                          & 0.9      & 0.847   & 0.85 \\
+% 		\bottomrule
+% 	\end{tabular}
+% \end{table}
 
 The traditional microservice based app consists of multiple microservices that each
 have their own deployment configuration.
@@ -274,6 +333,8 @@ We also need to make sure to update our deployment pipeline to deploy the new
 service.
 Lastly, we have to go through each microservice and update them to call the new endpoint.
 Here the programmer carries a huge burden, because the compiler can't help them.
+
+See \ref{tab:split_ms} for a comparison.
 
 \section{Discussion}
 Service Weaver currently only supports GKE deployments natively.
@@ -291,6 +352,13 @@ deploys is worth the safety guarantees.
 Another thing to note is that while Service Weaver does offer performance benefits
 over typical JSON-based MSA applications, these benefits don't translate to 3rd party
 services since they still need JSON messages to communicate.
+
+A current drawback of Service Weaver is that its deployment is currently limited to Google's
+cloud offering.
+Google Cloud is only the third largest cloud provider behind AWS \cite{AmazonWebServices}
+and Microsoft Azure \cite{Azure}.
+If Service Weaver is to have a big impact they need to also support the leading
+cloud providers.
 
 \section{Conclusion}
 This is the conclusion.
