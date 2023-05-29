@@ -17,9 +17,12 @@ else
     exit -1
 fi
 
+csv_file_name="results/$1_$2_$3_$5.csv"
+tsv_file_name="results/$1_$2_$3_$5.tsv"
+
 echo "benching $1 on $ip:$port/$test_endpoint with -n $count and -c $conc"
 if [ "$1" == "trad" ]; then
-    ab -n $count -c $conc http://"$ip":"$port"/"$test_endpoint"
+    ab -n $count -c $conc -e $csv_file_name -g $tsv_file_name http://"$ip":"$port"/"$test_endpoint"
 else
-    ab -n $count -c $conc -H "Host:hello.com"  http://"$ip":"$port"/"$test_endpoint"
+    ab -n $count -c $conc -H "Host:hello.com" -e $csv_file_name -g $tsv_file_name http://"$ip":"$port"/"$test_endpoint"
 fi
