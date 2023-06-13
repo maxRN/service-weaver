@@ -11,7 +11,7 @@
 \begin{document}
 
 \begin{abstract}
-	Microservice architecture are quickly becoming the default architecture style
+	Microservice architectures are quickly becoming the default architecture style
 	in the industry, increasing development velocity and reducing scaling issues.
 	However numerous problems have been identified that plague microservice development,
 	such as designing the overall architecture and high network usage.
@@ -39,7 +39,7 @@ of problems that developers have to deal with.
 In \cite{soldani_pains_gains} the authors analyze the pains for MSA development
 and create a taxonomy for each stage of the lifecycle of software (design, development, and operation).
 Architecture design, testing during development, and monitoring and resource consumption
-while operating the application are among the most often mentioned topics.
+while operating the application are among the most often talked about pains.
 
 Service Weaver is a new development framework created by Google that aims to solve some of
 the problems with current microservice development.
@@ -47,11 +47,16 @@ Their solution offers the flexibility to write the application as a typical mono
 but deploy it as a set of microservices, thus eliminating the problem of pre-mature
 splitting of the application.
 
-To investigate whether Service Weaver can be a feasible alternative to conventional
-MSA development I devised multiple experiments to empirically determine the performance
-claims of Service Weaver.
-I will also try to present how easy or complicated certain operations during the
-lifecycle of a typical software application are for the two applications.
+Based on the pain taxonomy presented in \cite{soldani_pains_gains} I am going to
+compare a traditional microservice application written in Go with a Service Weaver
+implementation.
+\Citeauthor{soldani_pains_gains} identify multiple pain points, but I'm going to focus
+on just a few for each stage of the development lifecycle:
+\begin{itemize}
+	\item{Design: service dimensioning, API versioning, service contracts}
+	\item{Development: Amount of boilerplate code for communication}
+	\item{Operations: Network resource usage}
+\end{itemize}
 
 \subsection{Related Work}
 The team behind Service Weaver present the programming model and architecture
@@ -61,9 +66,25 @@ specify how exactly the tests were performed.
 
 \Citeauthor{soldani_pains_gains} conduct a grey literature review of pains and gains
 associated with microservice development.
-They also present a pain taxonomy of problems related to microservice application
-design, development, and operation.
+They present a pain and a gain taxonomy of a typical microservice based application
+development lifecycle.
 They don't however present any solution to relieve these problems.
+
+Instead of JSON-based messaging a binary message format such as gRPC \cite{GRPC}
+or Apache Avro \cite{ApacheAvro} can be used to increase performance.
+This approach comes with its own challenges however: The message definitions have
+to be kept in sync between services and there is still the possibility of services
+with different message versions running in parallel.
+
+As of todate, there haven't been any 3rd party performance or capability tests
+of the Service Weaver framework.
+That is understandable as this framework is still rather new with it's first
+open-source version having been released in March 2023.
+While the team behind Service Weaver has published a paper about the internals
+which also included some performance measurements, they are far from complete
+and omit crucial information.
+This paper aims to solve this gap in reaserch by providing detailed performance
+analysis.
 
 \section{Fundamentals}
 
@@ -106,6 +127,34 @@ and which components (if any) should be co-located.
 Co-location here means, that they run on the same node and communicate via normal
 Go function calls, thus decreasing the communication overhead even further.
 
+\subsubsection{Custom Serialization Format}
+
+Service Weaver uses a custom serialization format to improve microservice communication
+efficiency and performance.
+During its code generation step Service Weaver creates a serialization code for the
+parameters of a method of a microservice that is called from another microservice and
+also generates deserialization code of the return parameters.
+Analogously, for the called on microservice it generates deserialization code for
+the parameters and serialization code for the return parameters.
+Due to knowing all dependencies at compile time it can generate this code for all
+microservices.
+
+The protocol works as follows: Each integer is encoded as is, a string is encoded
+as the length of the string followed by the contents of the string.
+This encoding has two advantages: First the overall payload is smaller than the
+JSON payload for the same information, because the field names aren't transmitted
+for every request. Second, because Service Weaver knows the exact order of the arguments,
+it doesn't need to parse the request payload: it can just extract the values directly
+from the byte slice.
+An example code snippet for generated serialization code is given in figure \ref{fig:serialization_code}.
+
+\begin{figure}
+	\includegraphics[width=\columnwidth]{serialization_code}
+	\caption{Generated Service Weaver code for serializing objects
+		as method arguments.}
+	\label{fig:serialization_code}
+\end{figure}
+
 \subsection{Traditional Microservice}
 
 \Citeauthor{building_microservices} defines microservices as encapsulated parts
@@ -116,7 +165,11 @@ A typical MSA application consists of multiple folders for each microservice
 that don't share code with each other.
 
 To create a typical microservice I created two separate services in different folders.
-The services are both written in Go and communicate with each other via REST endpoints and JSON messages.
+The services are both written in Go and communicate with each other via REST endpoints
+and JSON messages.
+JSON-based communication is typical for services that are not performance-critical.
+As JSON is a human- and machine-readable format it suits itself nicely for develoment,
+while still being more efficient than XML-based communication protocols.
 
 \section{Evaluation}
 
@@ -162,32 +215,55 @@ service to receive the request and return a response.
 
 \subsection{Measurement Setup}
 
-To reduce variance I conducted the measurements on two hosted VMs from Linode \cite{Linode}.
-The first VM hosts the app and the second VM makes the requests and records the
-metrics.
-The exact VM specifications can be found in table \ref{tab:linode}.
+In this section I will firstly explain the general experimentation setup that is
+used to evaluate the performance of both applications.
+Then I will go on to explain the different scenarios I considered in the evaluation.
+Lastly I cover the tools and hardware used to conduct the measurements.
 
-Both apps consisted of two services: a main service and a worker service.
+Both apps consist of two services: a main service and a worker service.
 The main service receives requests and delegates them to the worker service.
-The worker service receives requests from the main service, increments a number in the object
-and returns the modified request object.
+The worker service receives requests from the main service, increments a number in the payload
+object and returns the modified request object.
 Then finally the main service returns the response to the client.
-Note that the test cases do not include a call to a database or any kind of storage.
-I just want to test the capabilities of the framework and not stain the results by
-waiting on a data store.
+Note that this setup does not include any kind of database calls as this would slow
+down the request and it not relevant to the performance of each application.
 The Service Weaver app was started using the `weaver gke-local` command which reproduces a
 cloud deployment and is similar to a typical microservice deployment with each service running in
 its own container/on its own node.
-That means the services are communicating via RPC.
+This also ensures that the services are communicating via RPC, because usually Service Weaver
+components on the same machine would communicate using normal Go method calls.
 Because `weaver gke-local` creates two instances of each component and a load-balancing
-proxy by default, I also replicated each service for the traditional app twice.
-I also added a Caddy \cite{serverCaddyUltimateServer} reverse proxy to act a load-balancer.
+proxy by default, I also replicated this setup for the traditional microservice application.
+Thus for the traditional microservice I started each service (main and worker) twice
+and additionally put a reverse-proxy load-balancer \cite{serverCaddyUltimateServer}
+in front of the main services to distribute the load evenly.
 The general architecture can be seen in \ref{fig:architecture}.
 
+I evaluated the performance of the services by sending payloads of varying sizes
+at different network load levels.
+There are 3 scenarios: A) no-payload, B) "wide" JSON payload, C) "narrow" JSON payload.
+Wide and narrow refers to the amount of fields the payload has vs. the size of the
+value of each field.
+The wide payload has fewer fields, but larger values while the narrow payload
+has more fields that each hold only a small amount of information.
+The payloads were chosen that way to measure the impact of the custom Service
+Weaver encoding.
+Both payload types consist of an id and an action field.
+The narrow JSON payload has an additional 20 fields with values of size 10 bytes.
+The wide JSON payload has only one additional field with a value of size 500 bytes.
+The no-payload scenario is used to establish a baseline comparison and to track
+any slow downs the reverse proxy (Caddy) used in the traditional application
+might incur.
+
+To reduce variance I conducted the measurements on two hosted VMs from Linode \cite{Linode}.
+The first, more powerful VM hosts the app while the second, less powerful VM makes
+the requests and records the metrics.
+The exact VM specifications can be found in table \ref{tab:linode}.
 For each test no other services besides the app itself and the pre-installed system services were running.
 I used the load-generation tool Apache Bench (\emph{ab}) \cite{ApacheHTTPServer} to simulate
 real-world stress test.
-
+I varied the amount of requests as well as the concurrency level of the requests with
+the flags n for number of request and c for concurrency level.
 
 \begin{table}
 	\caption{Specifications of virtual machine used for testing.}
@@ -198,26 +274,79 @@ real-world stress test.
 		CPU cores & 2                & 1                \\
 		CPU speed & 2.199GHz         & 2.299GHz         \\
 		RAM       & 4 GB             & 1 GB             \\
-		OS        & Debian 11 64 bit & Debian 11 64 bit
+		OS        & Debian 11 64 bit & Debian 11 64 bit \\
+		\bottomrule
 	\end{tabular}
 \end{table}
 
 
 \begin{figure}
-	\includegraphics[width=\columnwidth]{setup}
+	\includegraphics[width=\columnwidth]{setup.excalidraw}
 	\caption{The experimentation setup. The main service is called from the outside and
 		forwards the request to the worker service.
-		Afterwards the worker's response will be returned to the user.}
+		Afterwards the worker's response will be returned to the user. LB = load-balancer.
+		Each service is replicated twice.}
 	\label{fig:architecture}
 \end{figure}
 
 \subsection{Results}
 
-\subsubsection{How much more efficient is the custom serialization format?}
+\subsubsection{RQ1 Performance Evaluation}
+
+\begin{figure}
+	\includegraphics[width=\columnwidth]{nothing_performance.png}
+	\caption{Nothing scenario performance for traditional and Service Weaver application.}
+	\label{fig:nothing_performance}
+\end{figure}
+
+\begin{figure}
+	\includegraphics[width=\columnwidth]{wide_performance.png}
+	\caption{Wide scenario performance for traditional and Service Weaver application.}
+	\label{fig:wide_performance}
+\end{figure}
+
+\begin{figure}
+	\includegraphics[width=\columnwidth]{long_performance.png}
+	\caption{Long scenario performance for traditional and Service Weaver application.}
+	\label{fig:long_performance}
+\end{figure}
+
+Figure \ref{fig:nothing_performance} shows the base line performance measurements
+when not sending any JSON payload and just communicating with the main service.
+Both are relatively close in performance, but the traditional microservice application
+reliably outperforms the Service Weaver application.
+That is likely due to the automatically generated traces from Service Weaver.
+This allows easier debugging, but also slows down the application.
+
+Figure \ref{fig:wide_performance} displays the performance when sending a JSON object
+with one field with a 500 byte long value.
+The size of the JSON request payload transmitted via HTTP in the traditional microservice
+application is 547 bytes.
+The binary encoded Service Weaver message is only 531 bytes, which is only around
+0.03\% smaller.
+Yet, according to figure \reg{fig:wide_performance} the Service Weaver application
+performs up to 19\% or 44 seconds faster than the traditional application in the 50k requests scenario.
+This can be attributed to
+
+
+% 8 bytes (for ID) +
+% string:
+%   4 bytes (length) + 15 bytes message
+% string:
+%   4 bytes (length) + 500 bytes message
+% = 531 bytes
+
+
+Figure \ref{fig:long_performance} shows the comparison between Service Weaver and
+the traditional application when sending a "long" JSON message.
+That is a JSON object that has a lot of small fields, which means the Service Weaver
+encoding should reduce the size by a lot compared to the JSON messages sent between
+the traditional application's microservices.
+
 
 As seen in figure \ref{fig:performance1} the Service Weaver implementation performed
 better than the traditional microservice architecture based application.
-Some more numbers here...
+Some more numbers here..
 This is likely due to the smaller footprint of the messages passed between the services.
 Service Weaver uses a custom serialization format to passes function arguments between services.
 This format stores the object as one long array in memory, binary encoded.
@@ -239,13 +368,6 @@ In this example the size savings aren't that big, but in different kinds of JSON
 they can grow large.
 The best case for the Service Weaver encoding is a JSON message with a lot of fields
 with long names but short values.
-
-\begin{figure}
-	\includegraphics[width=\columnwidth]{serialization_code}
-	\caption{Generated Service Weaver code for serializing objects
-		as method arguments.}
-	\label{fig:serialization_code}
-\end{figure}
 
 The shorter message size isn't the only contributing factor to the higher Service Weaver
 performance though.
@@ -280,9 +402,9 @@ To split such a microservice (or component) one would need to create a new
 component that takes over some of the functionality of the old service.
 This is done by creating a new public type and a private type that implements
 that public type, typically in a new file as well.
-A minimal component is shown in \ref{fig:minimal_component}.
+A minimal component is shown in figure \ref{fig:minimal_component}.
 Every component that now wants to use the new component just needs get a reference
-to the new type like shown in \ref{fig:minimal_component}.
+to the new type like shown in figure \ref{fig:minimal_component}.
 After that is done, each place in the code where the new component is to be used
 needs to be updated.
 Should we forgot any place, then the compiler will fail and display an error message
@@ -337,10 +459,11 @@ Here the programmer carries a huge burden, because the compiler can't help them.
 See \ref{tab:split_ms} for a comparison.
 
 \section{Discussion}
-Service Weaver currently only supports GKE deployments natively.
-No control over Dockerfiles?
-No control over pod resources?
-Tradeoff ease-of-use vs configuration.
+% TODO:
+% Service Weaver currently only supports GKE deployments natively.
+% No control over Dockerfiles?
+% No control over pod resources?
+% Tradeoff ease-of-use vs configuration.
 
 One of the main benefits of developing a MSA application is the ability to
 have large teams work on the same application and deploy idependently without
@@ -353,15 +476,33 @@ Another thing to note is that while Service Weaver does offer performance benefi
 over typical JSON-based MSA applications, these benefits don't translate to 3rd party
 services since they still need JSON messages to communicate.
 
+One of the benefits of microservice based development in large organizations with
+lots of teams is the ability for each team to choose their own technology stack.
+In the case of Service Weaver the language is pre-defined: Go.
+
 A current drawback of Service Weaver is that its deployment is currently limited to Google's
 cloud offering.
-Google Cloud is only the third largest cloud provider behind AWS \cite{AmazonWebServices}
-and Microsoft Azure \cite{Azure}.
+According to \cite{InfographicBigThree2023} AWS \cite{AmazonWebServices} has a
+market share of 32\% and Azure \cite{Azure} of 23\% respectively.
+Meaning that both are ahead of Google's cloud offering \cite{GoogleCloud} in market
+share at just 10\%.
 If Service Weaver is to have a big impact they need to also support the leading
 cloud providers.
+However, due to Service Weaver's design it should not be too difficult to implement deployer
+modules for the other two leading cloud providers as the deployer module is only
+loosely coupled to the rest of the Service Weaver architecture. \cite{HowImplementService}
 
 \section{Conclusion}
-This is the conclusion.
+In this paper I conducted a performance analysis of a Service Weaver application
+and a typical microservice architecture application written in Go and communicating
+with JSON messages over REST endpoints.
+The experiments have shown that Service Weaver has a higher throughput in communication
+between services due to its efficient custom binary serilization format.
+
+Teams that run their infrastructure on Google's cloud and are already developing
+their services in Go should consider using Service Weaver for their next project
+as its improved developer experience and more efficient network communication can
+result in cost savings.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{service-weaver}
