@@ -10,7 +10,7 @@ for n in 10000 50000 100000; do
             for test_run in 1 2 3; do
                 echo "running bench $app $n $c $ip $ep"
                 echo "test_run $test_run"
-                ./bench.sh $app $n $c $ip $ep
+                ./bench.sh $app $n $c $ip $ep $test_run
             done
         done
     done
