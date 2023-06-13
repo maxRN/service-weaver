@@ -291,7 +291,7 @@ the flags n for number of request and c for concurrency level.
 
 \subsection{Results}
 
-\subsubsection{RQ1 Performance Evaluation}
+\subsubsection{RQ1 Performance Evaluation} \label{performance_section}
 
 \begin{figure}
 	\includegraphics[width=\columnwidth]{nothing_performance.png}
@@ -324,67 +324,35 @@ The size of the JSON request payload transmitted via HTTP in the traditional mic
 application is 547 bytes.
 The binary encoded Service Weaver message is only 531 bytes, which is only around
 0.03\% smaller.
-Yet, according to figure \reg{fig:wide_performance} the Service Weaver application
-performs up to 19\% or 44 seconds faster than the traditional application in the 50k requests scenario.
-This can be attributed to
-
-
 % 8 bytes (for ID) +
 % string:
 %   4 bytes (length) + 15 bytes message
 % string:
 %   4 bytes (length) + 500 bytes message
 % = 531 bytes
-
+Yet, according to figure \reg{fig:wide_performance} the Service Weaver application
+performs up to 19\% or 44 seconds faster than the traditional application in the 50k requests scenario.
+This can be attributed to the fact that the Service Weaver application does not
+need to parse the entire message and can just access the data by accessing the array
+as it knows the length and position of every argument.
 
 Figure \ref{fig:long_performance} shows the comparison between Service Weaver and
 the traditional application when sending a "long" JSON message.
 That is a JSON object that has a lot of small fields, which means the Service Weaver
 encoding should reduce the size by a lot compared to the JSON messages sent between
 the traditional application's microservices.
-
-
-As seen in figure \ref{fig:performance1} the Service Weaver implementation performed
-better than the traditional microservice architecture based application.
-Some more numbers here..
-This is likely due to the smaller footprint of the messages passed between the services.
-Service Weaver uses a custom serialization format to passes function arguments between services.
-This format stores the object as one long array in memory, binary encoded.
-It works like this: integers are encoded as is and if no size is specified then
-space for a 64-bit integer is reserved, 8 byte.
-Strings are encoded by first storing the length of the string, followed by the string
-itself in binary.
-The JSON message passed between the tradional app's microservices is 549 byte big.
-The keys have the following lengths: id - 2 byte, action - 6 byte, message - 7 byte.
-The 10 quation marks take up 10 bytes of space in total.
-That sums up to 25 bytes of unnecessary information that has to transmitted in every message.
-One could say that the message has an overhead of 25 byte or 0.046 \%.
-Comparing that to the Service Weaver encoding, we can see that it is smaller.
-The Service Weaver encoding breaks down like so: 8 bytes for the id, 4 bytes for length
-of the action string, 13 bytes for string "request\_image", 4 bytes for the length
-of the message string, 500 bytes for the length of the message.
-That adds up to a total of 8 + 4 + 13 + 4 + 500 = 529 bytes.
-In this example the size savings aren't that big, but in different kinds of JSON messages
-they can grow large.
-The best case for the Service Weaver encoding is a JSON message with a lot of fields
-with long names but short values.
-
-The shorter message size isn't the only contributing factor to the higher Service Weaver
-performance though.
-Service Weaver can also save time by not having to parse the JSON string before
-creating a struct from the data.
-In a typical microservice application the service receives the JSON request and
-then has to first parse it into a struct of a given type.
-During this parsing process it has to traverse the entire serialized JSON object
-to make sure it is valid for the type of the struct.
-Due to the code generation of Service Weaver it knows exactly how big each property
-of the byte object is and can thus efficiently extract that information from the
-byte array it receives and does not have to traverse the entire string.
-
-
-In this case the Service Weaver code produced a message that is
-Looking at the generated serialization code in figure \ref{fig:serialization_code}
-we can see that the message is at least around
+The JSON encoding of the message is 488 bytes long, slightly smaller than the wide
+JSON payload.
+% 8 bytes (for ID) +
+% string:
+%   4 bytes (length) + 15 bytes message
+% string:
+%   4 bytes (length) + 10 bytes message * 20
+% = 307 bytes
+The Service Weaver payload however is noticably smaller at 307 bytes.
+That is a difference of 38\% compared to the unencoded JSON message.
+Is this difference visible in the charts??
+% TODO
 
 \subsubsection{Splitting Microservice}
 
@@ -465,12 +433,48 @@ See \ref{tab:split_ms} for a comparison.
 % No control over pod resources?
 % Tradeoff ease-of-use vs configuration.
 
+In this paper I evaluated whether Service Weaver can be an alternative to the typical
+microservice based development of applications.
+The results have shown that the binary encoding that Service Weaver uses, provides
+measurably faster performance while also having a smaller network footprint.
+That means Service Weaver could be an alternative for application development
+that is constrained by network performance or to save cloud costs when sending lots
+of messages.
+As shown in section \ref{performance_section}, the size difference between a normal
+JSON message and a Service Weaver-encoded message can be as big as 38\%.
+If network usage is a concern then a reduction of this magnitude could make a
+big impact.
+One thing to note here is that there are other ways of enabling faster and more efficient
+inter-service communication that don't require the developer to rewrite the entire application
+in a new framework: gRPC \cite{GRPC} and Avro \cite{ApacheAvro} are common alternatives
+by and are also using binary encoding.
+However, neither of these can reach the efficiency of the Service Weaver encoding,
+because they always include some schema information and also have to keep in mind
+things like backwards-compatability.
+Service Weaver sidesteps both of these problems by only having one version be valid
+at any time and doing atomic upgrades with communication only happening between services
+of the same version.
+
+
 One of the main benefits of developing a MSA application is the ability to
 have large teams work on the same application and deploy idependently without
 interfering with each other. \cite{what}
 While this development model would certainly still be possible with a Service Weaver
 application, it remains to be seen if the added cost and overhead of having atomic
 deploys is worth the safety guarantees.
+As it stands currently, Service Weaver doesn't distinguish between breaking and
+non-breaking changes, that is between changes that adjust the interface used between
+services and those that don't.
+This is likely due to design as even if a change is not changing the interface, it
+could still lead to version mismatch problems.
+One of Service Weaver's big claims is that is wants to avoid those problems by always
+updating the entire application atomically, that could however impact development velocity;
+for example changing a typo in a logging statement in one of the services would
+lead to a redeploy of the entire application which in that case would be unnecessary.
+It would be nice to see Service Weaver offer a way to "force" an update of just a single
+service and thereby opting out of the safety guarantees.
+This could also be of benefit in scenarios where a fast deployment is important and
+waiting for a redeploy of the entire application might take too long.
 
 Another thing to note is that while Service Weaver does offer performance benefits
 over typical JSON-based MSA applications, these benefits don't translate to 3rd party
